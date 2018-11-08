@@ -5,6 +5,13 @@ from http.server import HTTPServer, CGIHTTPRequestHandler
 
 
 
+class RequestHandler(CGIHTTPRequestHandler):
+
+    def log_message(self, format, *args):
+        return
+
+
+
 class ServerRunner(threading.Thread):
 
     def __init__(self, threadID, name, counter):
@@ -13,7 +20,7 @@ class ServerRunner(threading.Thread):
         self.name = name
         self.counter = counter
         server_address = ('127.0.0.1', 80)  
-        self.httpd = HTTPServer(server_address, CGIHTTPRequestHandler)
+        self.httpd = HTTPServer(server_address, RequestHandler)
 
     def run(self):
         try:

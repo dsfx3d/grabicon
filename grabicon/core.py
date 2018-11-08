@@ -1,10 +1,10 @@
+import os
 import io
 from urllib.parse import urlparse
 
 # dependencies
 import requests
 import fleep
-from PIL import Image
 from bs4 import BeautifulSoup
 
 
@@ -13,21 +13,57 @@ from bs4 import BeautifulSoup
 class Icon:
     '''
     entity class for FaviconGrabber
-    '''
 
-    def __init__(self, url=None, width=None, height=None, data=None, filetype=None, extension=None, mimetype=None):
-        self.url = url
-        self.width = width
-        self.height = height
-        self.data = data
-        self.filetype = filetype
-        self.extension = extension
+    url         - url of favicon
+    data        - icon data
+    size        - length of data in bytes
+    type        - icon image type
+    extension   - icon file extension
+    '''
+    @staticmethod
+    def create(url, data):
+        '''
+        create and return valid Icon objects
+
+        Accepts
+        -------
+        url     - url
+        data    - data recieved from url
+
+        Returns
+        -------
+        Icon    - if data is image
+        None    - if data is not image
+        '''
+        icon = Icon()
+        
+        icon.url = url
+        icon.data = data.read()
+
+        # seek size of data
+        data.seek(0, os.SEEK_END)
+        icon.size = data.tell()
+
+        #
+        info = fleep.get(icon.data)
+        icon.type = info.type[0] if len(info.type) > 0 else None
+        icon.extension = info.extension[0] if len(info.extension) > 0 else None
+
+        # if icon is not image return None
+        if icon.type is None or 'image' not in icon.type:
+            return None
+        
+        return icon
+
+    def __str__(self):      # pragma: no cover
+        return f'{self.size} - {self.type} - {self.extension} - {self.url}'
+
 
 
 
 class FaviconGrabber:
     
-    def __init__(self, url=None):
+    def __init__(self):
         '''
         raw_url:        requested url
         resolved_url:   url after resolving redirects of raw_url
@@ -37,7 +73,7 @@ class FaviconGrabber:
 
         has_grabbed:        flag to check if favicons are grabbed
         '''
-        self.__init(url=url)
+        pass
 
 
 
@@ -59,8 +95,7 @@ class FaviconGrabber:
         self.__has_grabbed = False
 
         # clean and resolve raw_url redirects
-        if self.__raw_url is not None:
-            self.__resolve_raw_url()
+        self.__resolve_raw_url()
 
 
 
@@ -69,13 +104,13 @@ class FaviconGrabber:
     def __resolve_raw_url(self):
         '''
         clean raw_url and resolve redirects
-        '''
-        url = self.__raw_url        
-        
+        '''  
+        url = self.__raw_url
+
         # add protocol to raw url if missing
         if not url.startswith('http'):
             url = 'http://'+url
-        
+
         # go through redirects
         response = requests.get(url)
         # set final url as resolved_url
@@ -253,7 +288,7 @@ class FaviconGrabber:
 
     def __get_icon_from_url(self, url):
         '''
-        fetches icon by passed url to get icon data and meta-data
+        fetches icon by passed url and returns Icon obj
 
         Accepts
         -------
@@ -261,34 +296,18 @@ class FaviconGrabber:
 
         Returns
         -------
-        core.Icon object    - if icon fetched
-        None                - if icon not fetched
+        Icon object    - if valid icon fetched
+        None           - if not valid icon not fetched
         '''
         # request url
         response = requests.get(url)
         
-        # check if recieved content is image
-        try:
-            data_buffer = io.BytesIO(response.content)
-            img = Image.open(data_buffer)
-        except Exception:
-            # if recieved content is not image, return None
-            return None
-        else:
-            # get data
-            data = data_buffer.getvalue()
-            
-            # get dimesions
-            width = img.size[0]
-            height = img.size[1]
+        # create and return Icon
+        url = response.url
+        data_buffer = io.BytesIO(response.content)
 
-            # get image meta data
-            info = fleep.get(data_buffer.read(128)) # 128 bytes is enough according to fleep docs
-            filetype = info.type
-            extension = info.extension
-            
-            # return icon
-            return Icon(url=url, width=width, height=height, data=data, filetype=filetype, extension=extension)
+        return Icon.create(url, data_buffer)
+
 
 
 
@@ -304,7 +323,7 @@ class FaviconGrabber:
         
         Returns
         -------
-        icons   - list of core.Icon(s)
+        icons   - list of Icon(s)
         '''
         icons = []
         
@@ -320,7 +339,7 @@ class FaviconGrabber:
 
 
 
-    def grab(self, url=None):
+    def grab(self, url):
         '''
         grab favicons
 
@@ -332,15 +351,10 @@ class FaviconGrabber:
         -------
         icons   - list of core.Icon(s) attached with the requested url
         '''
+        if url is None:
+            raise ValueError('arg `url` is None')
 
-        if url is not None:
-            # if url passed in args re-initialize class variables
-            self.__init(url)
-
-
-        if self.__raw_url is None:
-            raise ValueError('arg url is None, arg url is must be passed either in constructor or method grab')
-
+        self.__init(url)
         
         # grab urls
         icon_urls = self.__grab_favicon_urls()

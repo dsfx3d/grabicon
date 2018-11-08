@@ -1,1 +1,1 @@
-from .core import FaviconGrabber
+from .core import FaviconGrabber, Icon

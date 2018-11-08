@@ -1,10 +1,19 @@
+import io
 import requests
 from unittest import TestCase
 
-from grabicon import FaviconGrabber
+from grabicon import FaviconGrabber, Icon
 from .www import ServerRunner
 
 
+
+class IconTestCase(TestCase):
+
+    def test_method_create_returns_none_if_arg_data_is_not_image_data_buffer(self):
+        data = io.BytesIO(b'16gh')
+        icon = Icon.create('fb.io', data)
+
+        self.assertIsNone(icon)
 
 
 class FaviconGrabberTestCase(TestCase):
@@ -15,6 +24,7 @@ class FaviconGrabberTestCase(TestCase):
         self.server.start()
 
         self.index_url = 'http://127.0.0.1:80/'
+        self.index_url_no_protocol = '127.0.0.1:80/'
         self.no_favicon_endpoint = 'no-favicon'
         self.rel_icon_endpoint = 'rel-icon'
         self.rel_shortcut_icon_endpoint = 'rel-shortcut-icon'
@@ -40,7 +50,7 @@ class FaviconGrabberTestCase(TestCase):
         return grabber.grab(url)
 
 
-    def contains_url(self, icons, url):
+    def contains_url(self, icons, url): # pragma: no cover
         for icon in icons:
             if icon.url == url:
                 return True
@@ -78,7 +88,7 @@ class FaviconGrabberTestCase(TestCase):
     ## favicons from markup
     def check_markup_icons(self, url):
         favicons = self.grab_favicons(url)
-        self.assertEqual(len(favicons), 2 + 1 + 2) # including favicon.ico and apple icons
+        self.assertEqual(len(favicons), 2 + 1 + 2)      # including favicon.ico and apple icons
         self.assertTrue(self.contains_url(favicons, self.favicon_1_url))
         self.assertTrue(self.contains_url(favicons, self.favicon_2_url))
 
@@ -97,15 +107,34 @@ class FaviconGrabberTestCase(TestCase):
     ## duplicate urls
     def test_method_grab_returns_list_excluding_duplicate_urls(self):
         favicons = self.grab_favicons(self.duplicate_icon_urls)
-        self.assertEqual(len(favicons), 1 + 1 + 2) # including favicon.ico and apple icons
+        self.assertEqual(len(favicons), 1 + 1 + 2)      # including favicon.ico and apple icons
         self.assertTrue(self.contains_url(favicons, self.favicon_1_url))
     ##
 
-
-
-    ## grabing without url
-    def test_method_grab_raises_value_error_if_raw_url_not_set(self):
+    def test_method_grab_raises_value_error_if_arg_url_is_none(self):
         with self.assertRaises(ValueError):
-            g = FaviconGrabber()
-            g.grab()
-    ##
+            grabber = FaviconGrabber()
+            grabber.grab(None)
+
+    
+    ## misc - test for issue #1
+    def test_method_grab_returned_icons_have_no_none_attrs(self):
+        favicons = self.grab_favicons(self.rel_icon_endpoint)
+
+        for icon in favicons:
+            self.assertIsNotNone(icon.type)
+            self.assertNotEqual(icon.type, [])
+
+            self.assertIsNotNone(icon.extension)
+            self.assertNotEqual(icon.extension, [])
+
+    ## misc
+    def test_method_grab_can_accept_url_without_protocol_to_provide_expected_results(self):
+        grabber = FaviconGrabber()
+        favicons  = grabber.grab(self.index_url_no_protocol)
+
+        self.assertEqual(len(favicons), 3) # including apple icons
+
+        self.assertTrue(self.contains_url(favicons, self.default_favicon_url))
+        self.assertTrue(self.contains_url(favicons, self.default_apple_icon_url))
+        self.assertTrue(self.contains_url(favicons, self.default_apple_precomposed_icon_url))

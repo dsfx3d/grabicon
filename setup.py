@@ -11,7 +11,7 @@ setup(
     ],
     
     name = 'grabicon',
-    version = '0.1.1',
+    version = '0.1.2',
     description = 'grab all favicons attached to a webpage by url',
     url = 'http://github.com/dsfx3d/grabicon',
     author = 'dsfx3d',
@@ -21,7 +21,6 @@ setup(
     packages = ['grabicon'],
     install_requires = [
         'requests',
-        'pillow',
         'beautifulsoup4',
         'fleep',
     ],
